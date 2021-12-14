@@ -4074,7 +4074,10 @@ case "${host}" in
 
     $as_echo "#define __DARWIN__ 1" >>confdefs.h
 
-    DEFAULT_DEFAULT_wxUSE_OSX_IPHONE=1
+    # DEFAULT_DEFAULT_wxUSE_OSX_IPHONE=1
+    $as_echo "#define TARGET_CARBON 1" >>confdefs.h
+
+    DEFAULT_DEFAULT_wxUSE_OSX_COCOA=1
   ;;
 
   *-*-darwin* )

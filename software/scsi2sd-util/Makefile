@@ -40,7 +40,7 @@ CXXFLAGS += -Wall -O2 -g -std=c++0x
 LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper $(LDFLAGS_ZLIB) $(LDFLAGS_HIDAPI)
 
 
-# wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
+# wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemite
 # liblzma not available on OSX 10.7
 # --disable-mediactrl for missing Quicktime.h on Mac OSX Sierra
 WX_CONFIG=--disable-webkit --disable-webviewwebkit  --disable-mediactrl \
@@ -77,13 +77,14 @@ ifeq ($(TARGET),Linux)
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
+	ARCH ?= $(shell uname -m)
 	VPATH += hidapi-mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation -lexpat
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7
 	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1
-	BUILD := $(PWD)/build/mac
+	BUILD := $(PWD)/build/mac-$(ARCH)
 all: $(BUILD)/scsi2sd-util.dmg
 
 $(BUILD)/scsi2sd-util.dmg: $(BUILD)/scsi2sd-util $(BUILD)/scsi2sd-monitor
