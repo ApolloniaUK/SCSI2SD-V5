@@ -1,0 +1,7 @@
+./software/build.sh/Users/alan/Documents/Development/unix/SCSI2SD-V5/software/build.sh
+./software/scsi2sd-util/Makefile
+
+Should not be modified in final commit - patch during build
+
+./software/scsi2sd-util/wxWidgets/configure
+./software/scsi2sd-util/wxWidgets/src/zlib/gzguts.h
