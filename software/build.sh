@@ -21,7 +21,7 @@ Linux)
 ;;
 
 Darwin)
-	NOBUILD=false
+	NOBUILD=""
 	BUILD_UNIV=0
 	
 	if test $# -ne 0 ; then
