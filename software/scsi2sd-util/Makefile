@@ -76,14 +76,15 @@ ifeq ($(TARGET),Linux)
 	BUILD := $(PWD)/build/linux
 endif
 ifneq ($(TARGET),Darwin)
-	# Basically NOOP()s for zlib and libzipper targets. In Mac OS builds there
-	# are files in the build tree which need to be patched between the
-	# 'configure' and 'make' phases for those targets. I do this by using a
-	# variable to hold the whole patch command and adding a new line, to the
-	# multi-line conditionalised target build commands for those targets
-	# ((between the 'configure' and 'make' lines) whose only content is that
-	# variable. If that variable is an empty string for non-Mac builds the build
-	# fails because it is not a command and so does not return success or
+	# NOOP()s for zlib and libzipper target patchers in non-OSX builds.
+	# 
+	# In Mac OS builds there are files in the build tree which need to be
+	# patched between the 'configure' and 'make' phases for those targets. I do
+	# this by using a variable to hold the whole patch command and adding a new
+	# line to the multi-line conditionalised target build commands for those
+	# targets, between the 'configure' and 'make' lines, whose only content is
+	# that variable. If that variable is an empty string for non-Mac builds the
+	# build fails because it is not a command and so does not return success or
 	# failure and so the end of line '&&' test fails'.
 	ZLIB_MAC_GZGUTS_PATCH = echo "zlib: non-Mac build, no need to patch gzguts.h."
 	LIBZIPPER_MAKE_PATCH = echo "libzipper: non-Mac build, no need to patch Makefile."
@@ -100,20 +101,23 @@ ifeq ($(TARGET),Darwin)
 	WX_CONFIG += --with-macosx-version-min=10.7 --with-osx_cocoa
 	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 -arch $(ARCH)
 	ZLIB_MAC_CONFIG = --archs="-arch $(ARCH)"
-	#ZLIB_MAC_GZGUTS_PATCH = sed -i '' "'21a\n#include \"zlib.h\"\n'" scsi2sd-util/build/mac-$(ARCH)/zlib/gzguts.h
 	LDFLAGS_ZLIB += -arch $(ARCH)
-	CFLAGS +=  -arch $(ARCH) -arch $(ARCH)
-	CXXFLAGS +=  -arch $(ARCH)
+	CFLAGS += -arch $(ARCH)
+	CXXFLAGS += -arch $(ARCH)
 	BUILD := $(PWD)/build/mac-$(ARCH)
-	# When building zlib for arm64 on Mac OS builds fail because zlib.h is not
+	# OSX patch for zlib
+	#
+	# When building zlib for arm64 on OSX the build fails because zlib.h is not
 	# included by gzguts.h. The variable defined on the first line after this
 	# comment holds a sed command that patches gzguts.h in the build tree
 	# keeping ths distribution tree clean. The (to most people) slightly odd
-	# formulation of the sed command is because Mac OS sed is BSD based and
+	# formulation of the sed command is because OSX sed is BSD based and
 	# expects it's command components on separate lines. The solution to this
 	# problem was adapted from a Stack Overflow answer:
 	# <https://stackoverflow.com/a/57392014>
-	ZLIB_MAC_GZGUTS_PATCH = echo "zlib: Mac build, patching gzguts.h." ; sed -i '' '21a\'$$'\n''\#include "zlib.h"'$$'\n' $(BUILD)/zlib/gzguts.h
+		ZLIB_MAC_GZGUTS_PATCH = echo "zlib: Mac build, patching gzguts.h." ; sed -i '' '21a\'$$'\n''\#include "zlib.h"'$$'\n' $(BUILD)/zlib/gzguts.h
+	# OSX patch for libzipper.
+	# 
 	# When building libzipper the only way to get the build architecture flag to
 	# the C++ compiler is to pass#= it to 'make' on the command line by setting
 	# it as the contents of the variable CXXFLAGS. Unfortunately this suppresses
@@ -123,17 +127,8 @@ ifeq ($(TARGET),Darwin)
 	# appended to my overriding command line CXXGLAGS. The next line defines a
 	# variable used to pass the architecture flags in CXXFLAGS to the make
 	# command.
-	LIBZIPPER_MAKE_PATCH = echo "libzipper:  Mac build, patching libzipper Makefile." ; sed -i '.orig' -e 's/CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/libzipper/Makefile
-	LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=-arch $(ARCH)"
-	#LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=-arch x86_64 -arch arm64"
-all: $(BUILD)/scsi2sd-util.dmg
-
-$(BUILD)/scsi2sd-util.dmg: $(BUILD)/scsi2sd-util $(BUILD)/scsi2sd-monitor
-	rm -rf $(dir $@)/dmg $@
-	mkdir -p $(dir $@)/dmg
-	cp $(BUILD)/scsi2sd-util $(BUILD)/scsi2sd-monitor $(dir $@)/dmg
-	chmod a+rx $(dir $@)/dmg/*
-	hdiutil create -srcfolder $(dir $@)/dmg $@
+		LIBZIPPER_MAKE_PATCH = echo "libzipper:  Mac build, patching libzipper Makefile." ; sed -i '.orig' -e 's/CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/libzipper/Makefile
+		LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=-arch $(ARCH)"
 endif
 
 export CC CXX

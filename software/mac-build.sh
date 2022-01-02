@@ -20,16 +20,19 @@ if test $# -ne 0 ; then
 						echo "Options:"
 						echo "    -h        Print this usage summary."
 						echo "    -a <arch> Build for i386|x86_64|arm64 architecture only."
+						echo "              No point in trying ppc - wxWidgets requires"
+						echo "              10.7 and the last SDK to support ppc was 10.6"
 						echo "              Disables universal build."
-						echo "    -o        Build only the host architecture:"
+						echo "    -n        Build only the native architecture:"
+						echo "              Disables universal build."
 						echo ""
-						NOBUILD=0
+						NOBUILD=1
 						break
 					;;
-					-o)
+					-n)
 						### mac build - build only host architecture
 						BUILD_ARCH=`uname -m`
-						echo "mac-build.sh - building for host architecture ${BUILD_ARCH} only. Disabling universal builds..."
+						echo "mac-build.sh - building for native architecture ${BUILD_ARCH} only. Disabling universal builds..."
 						BUILD_UNIV=1
 						break
 					;;
@@ -85,48 +88,34 @@ else
 fi
 echo "mac-build.sh - building for: ${BUILD_ARCHS[@]}"
 
-if [ 1 -eq 0 ] ; then
-	XCBVERS_RAW=`xcodebuild -version`
-	XCBVERS_STR=$( echo $XCBVERS | cut -d ' ' -f 2)
-	IFS='.' read -r -a XCVERS <<< $XCBVERS_STR
-	### DEBUG_START
-	echo $XCVERS
-	### DEBUG_END
-fi
-
-# ppc not supported in 10.7 SDK so no need to even try building
-# Xcode 10 will not build i386
-# Xcode 12.2 required for arm64
-# looks like test build of c file is required to really test
-#
-# echo "int main(void) {return(0);}" > test.c
-# cc -arch arm64 test.c -o test > /dev/null 2>&1
-#		returns 1 in $? if can't build for specified architecture
-# 
-# will need to test in scsi2sd-util/Makefile for arm64 build 
-# (with uname -m) and patch the copied scsi2sd-util/wxWidgets/configure, 
-# scsi2sd-util/wxWidgets/src/zlib/gzguts.h and possibly 
-# scsi2sd-util/wxWidgets/configure.in
-
 ### Start build
 for BUILD_ARCH in "${BUILD_ARCHS[@]}"; do
 	echo "mac-build.sh - building ${BUILD_ARCH}"
 	cd scsi2sd-util
-	# env /usr/bin/arch "-${BUILD_ARCH}" make -C ./
 	make ARCH="${BUILD_ARCH}" -C ./
-	if [ $? -eq 0 ]; then
-		cd ..
+	BUILD_RES=$?
+	cd ..
+	if [ $BUILD_RES -eq 0 ]; then
 		mkdir -p build/mac-${BUILD_ARCH}
-		cp scsi2sd-util/build/mac-${BUILD_ARCH}/scsi2sd-util build/mac-${BUILD_ARCH}
-		cp scsi2sd-util/build/mac-${BUILD_ARCH}/scsi2sd-bulk build/mac-${BUILD_ARCH}
+		cp scsi2sd-util/build/mac-${BUILD_ARCH}/scsi2sd-util build/mac-${BUILD_ARCH} && \
+		cp scsi2sd-util/build/mac-${BUILD_ARCH}/scsi2sd-bulk build/mac-${BUILD_ARCH} && \
 		cp scsi2sd-util/build/mac-${BUILD_ARCH}/scsi2sd-monitor build/mac-${BUILD_ARCH}
 	else
-		cd  ..
+		exit 1
 	fi
 done
 
-### Create universal binaries
-mkdir build/mac
-lipo -create ./build/mac-*/scsi2sd-bulk -output ./build/mac/scsi2sd-bulk
-lipo -create ./build/mac-*/scsi2sd-monitor -output ./build/mac/scsi2sd-monitor
-lipo -create ./build/mac-*/scsi2sd-util -output ./build/mac/scsi2sd-util
+### Create distro disk image
+if [ ${#BUILD_ARCHS[@]} -gt 1 ] ; then
+	echo "mac-build.sh - packaging Mac distro (universal for ${BUILD_ARCHS[@]})..."
+else
+	echo "mac-build.sh - packaging Mac distro (for ${BUILD_ARCHS[@]})..."
+fi
+rm -rf ./build/mac/scsi2sd-util*
+mkdir -p ./build/mac/scsi2sd-util
+lipo -create ./build/mac-*/scsi2sd-bulk -output ./build/mac/scsi2sd-util/scsi2sd-bulk
+lipo -create ./build/mac-*/scsi2sd-monitor -output ./build/mac/scsi2sd-util/scsi2sd-monitor
+lipo -create ./build/mac-*/scsi2sd-util -output ./build/mac/scsi2sd-util/scsi2sd-util
+chmod a+rx ./build/mac/scsi2sd-util/*
+hdiutil create -ov -fs HFS+ -srcfolder ./build/mac/scsi2sd-util ./build/mac/scsi2sd-util.dmg
+rm -rf ./build/mac/scsi2sd-util ./build/mac-*
