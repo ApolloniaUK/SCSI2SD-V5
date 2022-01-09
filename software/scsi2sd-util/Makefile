@@ -98,6 +98,7 @@ ifeq ($(TARGET),Darwin)
 	LDFLAGS += -framework IOKit -framework CoreFoundation -lexpat
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
+	# If building on Apple Silicon without '--with-osx_cocoa' wxWidgets configure tries to build for iPhone...
 	WX_CONFIG += --with-macosx-version-min=10.7 --with-osx_cocoa
 	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 -arch $(ARCH)
 	ZLIB_MAC_CONFIG = --archs="-arch $(ARCH)"
@@ -110,16 +111,16 @@ ifeq ($(TARGET),Darwin)
 	# When building zlib for arm64 on OSX the build fails because zlib.h is not
 	# included by gzguts.h. The variable defined on the first line after this
 	# comment holds a sed command that patches gzguts.h in the build tree
-	# keeping ths distribution tree clean. The (to most people) slightly odd
+	# keeping the distribution tree clean. The (to most people) slightly odd
 	# formulation of the sed command is because OSX sed is BSD based and
-	# expects it's command components on separate lines. The solution to this
+	# expects its command components on separate lines. The solution to this
 	# problem was adapted from a Stack Overflow answer:
 	# <https://stackoverflow.com/a/57392014>
 		ZLIB_MAC_GZGUTS_PATCH = echo "zlib: Mac build, patching gzguts.h." ; sed -i '' '21a\'$$'\n''\#include "zlib.h"'$$'\n' $(BUILD)/zlib/gzguts.h
 	# OSX patch for libzipper.
 	# 
 	# When building libzipper the only way to get the build architecture flag to
-	# the C++ compiler is to pass#= it to 'make' on the command line by setting
+	# the C++ compiler is to pass it to 'make' on the command line by setting
 	# it as the contents of the variable CXXFLAGS. Unfortunately this suppresses
 	# any CXXFLAGS configure has generated within the Makefile. The variable
 	# defined on the first line after this comment holds a sed command that
@@ -127,7 +128,7 @@ ifeq ($(TARGET),Darwin)
 	# appended to my overriding command line CXXGLAGS. The next line defines a
 	# variable used to pass the architecture flags in CXXFLAGS to the make
 	# command.
-		LIBZIPPER_MAKE_PATCH = echo "libzipper:  Mac build, patching libzipper Makefile." ; sed -i '.orig' -e 's/CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/libzipper/Makefile
+		LIBZIPPER_MAKE_PATCH = echo "libzipper:  Mac build, patching libzipper Makefile." ; sed -i '' -e 's/^CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/libzipper/Makefile
 		LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=-arch $(ARCH)"
 endif
 
