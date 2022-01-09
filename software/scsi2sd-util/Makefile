@@ -161,8 +161,7 @@ OBJ = \
 	${CONSOLEOBJ} \
 	$(BUILD)/ConfigUtil.o \
 	$(BUILD)/BoardPanel.o \
-	$(BUILD)/TargetPanel.o \
-	$(BUILD)/hidpacket.o \
+	$(BUILD)/TargetPanel.o 
 
 EXEOBJ = \
 	$(BUILD)/scsi2sd-util.o \
