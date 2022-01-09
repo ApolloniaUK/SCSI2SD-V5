@@ -23,17 +23,10 @@ if test $# -ne 0 ; then
 						echo "              No point in trying ppc - wxWidgets requires"
 						echo "              10.7 and the last SDK to support ppc was 10.6"
 						echo "              Disables universal build."
-						echo "    -n        Build only the native architecture:"
+						echo "    -n        Build only the native architecture."
 						echo "              Disables universal build."
 						echo ""
 						NOBUILD=1
-						break
-					;;
-					-n)
-						### mac build - build only host architecture
-						BUILD_ARCH=`uname -m`
-						echo "mac-build.sh - building for native architecture ${BUILD_ARCH} only. Disabling universal builds..."
-						BUILD_UNIV=1
 						break
 					;;
 					-a)
@@ -41,6 +34,13 @@ if test $# -ne 0 ; then
 						shift
 						echo "mac-build.sh - building for ${1} only. Disabling universal builds..."
 						BUILD_ARCH="${1}"
+						BUILD_UNIV=1
+						break
+					;;
+					-n)
+						### mac build - build only host architecture
+						BUILD_ARCH=`uname -m`
+						echo "mac-build.sh - building for native architecture ${BUILD_ARCH} only. Disabling universal builds..."
 						BUILD_UNIV=1
 						break
 					;;
