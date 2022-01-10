@@ -87,25 +87,32 @@ ifneq ($(TARGET),Darwin)
 	# build fails because it is not a command and so does not return success or
 	# failure and so the end of line '&&' test fails'.
 	ZLIB_MAC_GZGUTS_PATCH = echo "zlib: non-Mac build, no need to patch gzguts.h."
+	WX_MAKE_PATCH = echo "wxWidgets: non-Mac build, no need to patch Makefile."
 	LIBZIPPER_MAKE_PATCH = echo "libzipper: non-Mac build, no need to patch Makefile."
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
 	ifndef ARCH
-	ARCH ?= $(shell uname -m)
+	# ARCH ?= $(shell uname -m)
+	ARCH ?= -arch $(shell uname -m)
 	endif
 	VPATH += hidapi-mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation -lexpat
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	# If building on Apple Silicon without '--with-osx_cocoa' wxWidgets configure tries to build for iPhone...
-	WX_CONFIG += --with-macosx-version-min=10.7 --with-osx_cocoa
-	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 -arch $(ARCH)
-	ZLIB_MAC_CONFIG = --archs="-arch $(ARCH)"
-	LDFLAGS_ZLIB += -arch $(ARCH)
-	CFLAGS += -arch $(ARCH)
-	CXXFLAGS += -arch $(ARCH)
-	BUILD := $(PWD)/build/mac-$(ARCH)
+	# WX_CONFIG += --with-macosx-version-min=10.7 --with-osx_cocoa
+	WX_CONFIG += --with-macosx-version-min=10.7 --with-osx_cocoa --disable-precomp-headers
+	# CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 -arch $(ARCH)
+	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1
+	ZLIB_MAC_CONFIG = --archs="$(ARCH)"
+	# LDFLAGS_ZLIB += -arch $(ARCH)
+	LDFLAGS_ZLIB += $(ARCH)
+	# CFLAGS += -arch $(ARCH)
+	CFLAGS += $(ARCH)
+	# CXXFLAGS += -arch $(ARCH)
+	CXXFLAGS += $(ARCH)
+	BUILD := $(PWD)/build/mac
 	# OSX patch for zlib
 	#
 	# When building zlib for arm64 on OSX the build fails because zlib.h is not
@@ -117,6 +124,20 @@ ifeq ($(TARGET),Darwin)
 	# problem was adapted from a Stack Overflow answer:
 	# <https://stackoverflow.com/a/57392014>
 		ZLIB_MAC_GZGUTS_PATCH = echo "zlib: Mac build, patching gzguts.h." ; sed -i '' '21a\'$$'\n''\#include "zlib.h"'$$'\n' $(BUILD)/zlib/gzguts.h
+	# OSX patch for wxWidgets.
+	# 
+	# When building libzipper the only way to get the build architecture flags to
+	# the C++ compiler is to pass it to 'make' on the command line by setting
+	# it as the contents of the variable CXXFLAGS. Unfortunately this suppresses
+	# any CXXFLAGS configure has generated within the Makefile. The variable
+	# defined on the first line after this comment holds a sed command that
+	# patches the generated makefile so the configure-generated CXXFLAGS are
+	# appended to my overriding command line CXXGLAGS. The next line defines a
+	# variable used to pass the architecture flags in CXXFLAGS to the make
+	# command.
+		# WX_MAKE_PATCH = echo "wxWidgets:  Mac build, patching wxWidgets Makefile." ; sed -i '' -e 's/^CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/wx/Makefile
+		WX_MAKE_PATCH = echo "wxWidgets:  Mac build, patching wxWidgets Makefile." ; sed -i '' -e 's/^CXXFLAGS \= /override CXXFLAGS += /' -e 's/^CFLAGS \= /override CFLAGS += /' -e 's/^OBJCXXFLAGS \= /override OBJCXXFLAGS += /' $(BUILD)/wx/Makefile
+		WX_COMPILER_FLAGS_MAC = "CXXFLAGS=$(ARCH)" "CFLAGS=$(ARCH)" "OBJCXXFLAGS=$(ARCH)"
 	# OSX patch for libzipper.
 	# 
 	# When building libzipper the only way to get the build architecture flag to
@@ -129,7 +150,7 @@ ifeq ($(TARGET),Darwin)
 	# variable used to pass the architecture flags in CXXFLAGS to the make
 	# command.
 		LIBZIPPER_MAKE_PATCH = echo "libzipper:  Mac build, patching libzipper Makefile." ; sed -i '' -e 's/^CXXFLAGS \= /override CXXFLAGS += /' $(BUILD)/libzipper/Makefile
-		LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=-arch $(ARCH)"
+		LIBZIPPER_CXXFLAGS_MAC = "CXXFLAGS=$(ARCH)"
 endif
 
 export CC CXX
@@ -196,7 +217,8 @@ endif
 	( \
 		cd $(dir $@) && \
 		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS="$(CPPFLAGS_ZLIB) $(CPPFLAGS_WXBUILD)" LDFLAGS="$(LDFLAGS_ZLIB)" && \
-		$(MAKE) \
+		$(WX_MAKE_PATCH) && \
+		$(MAKE) $(WX_COMPILER_FLAGS_MAC) \
 	) && \
 	touch $@
 endif
